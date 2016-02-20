@@ -47,25 +47,32 @@ class TicketAutoCompleteUserPlugin (Component):
     def pre_process_request (self, req, handler):
         return handler
     def post_process_request (self, req, template, data, content_type):
-        if req.path_info.startswith('/newticket') or\
-           req.path_info.startswith('/ticket/'):
+        if template in ('ticket.html', 'query.html'):
             Chrome(self.env).add_jquery_ui(req)
-            add_script(req, 'autocompluseraccount/js/autocompluseraccount.js')
+            add_script(req, self.ID + '/js/autocompluseraccount.js')
+            if template == 'query.html':
+                add_script(req, self.ID + '/js/jquery-observe.js')
         return template, data, content_type
 
 
     # ITemplateStreamFilter
     def filter_stream (self, req, method, filename, stream, data):
-        if not req.path_info.startswith('/newticket') and\
-           not req.path_info.startswith('/ticket/'):
+        if filename not in ('ticket.html', 'query.html'):
             return stream
 
-        for xpath in [self._item_to_xpath(f) for f in self.single_fields]:
-            stream |= Transformer(xpath).attr('class', self.CLASS)
+        if filename == 'ticket.html':
+            for xpath in [self._item_to_xpath_t(f) for f in self.single_fields]:
+                stream |= Transformer(xpath).attr('class', self.CLASS)
 
-        for xpath in [self._item_to_xpath(f) for f in self.multiple_fields]:
-            stream |= Transformer(xpath).attr('class', self.CLASS_MULTI)
+            for xpath in [self._item_to_xpath_t(f) for f in self.multiple_fields]:
+                stream |= Transformer(xpath).attr('class', self.CLASS_MULTI)
 
+        if filename == 'query.html':
+            for xpath in [self._item_to_xpath_q(f) for f in self.single_fields]:
+                stream |= Transformer(xpath).attr('class', self.CLASS)
+
+            for xpath in [self._item_to_xpath_q(f) for f in self.multiple_fields]:
+                stream |= Transformer(xpath).attr('class', self.CLASS_MULTI)
 
         stream |= Transformer('//head').append(tag.style('''
             img.autocompluseraccount { vertical-align: middle; }
@@ -77,13 +84,23 @@ class TicketAutoCompleteUserPlugin (Component):
             '''))
         return stream
 
-    def _item_to_xpath (self, item):
+    def _item_to_xpath_t (self, item):
         if item.startswith('.'):
-            return '//input[@class="' + item[1:] + '"]' 
+            return '//input[@class="' + item[1:] + '"]'
         if item.startswith('#'):
-            return '//input[@id="' + item[1:] + '"]' 
+            return '//input[@id="' + item[1:] + '"]'
+        return '//input[@id="field-' + item + '"]'
 
-        return '//*[@id="field-' + item + '"]'
+    def _item_to_xpath_q (self, item):
+        if item.startswith('.'):
+            return '//input[@class="' + item[1:] + '"]'
+        if item.startswith('#'):
+            return '//input[@id="' + item[1:] + '"]'
+        return '//fieldset[@id="filters"]//tr[@class="' + item + '"]'\
+                '/td[@class="filter"]/input'
+
+    def _is_field (self, item):
+        return item[0] not in ('.', '#')
 
 
     # IRequestHandler methods
@@ -91,7 +108,7 @@ class TicketAutoCompleteUserPlugin (Component):
         return req.path_info.startswith('/accounts_completion')
 
     def process_request(self, req):
-        data = []
+        users = []
         for username, name, email in self.env.get_known_users():
             info = { 'value': username }
             if self.enable_name:
@@ -102,6 +119,12 @@ class TicketAutoCompleteUserPlugin (Component):
                             username, self.CLASS, 20).render()
                 info['avatar'] = avatar
 
-            data.append(info)
-        data.sort(key=lambda i: i['value'])
+            users.append(info)
+        users.sort(key=lambda i: i['value'])
+
+        data = {
+            'users': users,
+            'single': [f for f in self.single_fields if self._is_field(f)],
+            'multi': [f for f in self.multiple_fields if self._is_field(f)],
+        }
         req.send(json.dumps(data).encode('utf-8'), 'application/json')

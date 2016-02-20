@@ -36,7 +36,7 @@
             };
     }
 
-    $.getJSON(get_url('accounts_completion'), function(json) {
+    function enable_autocomplete ( json ) {
 
       $('input.autocompluseraccount')
         .autocomplete({
@@ -73,6 +73,45 @@
         .blur(function(){
           this.value = this.value.replace(/,\s*$/, '');
         })
+    }
+
+    function enable_observe (source, sflds, mflds, target, input_pfx, input) {
+
+      targets = $(target)
+      if ( targets[0] ) {
+        $.each(sflds, function(i,fld){
+          selector = input_pfx + fld + ' ' + input;
+          targets.observe('added', selector, function( record ) {
+            $(this).addClass('autocompluseraccount');
+            enable_autocomplete(source);
+          });
+        });
+        $.each(mflds, function(i,fld){
+          selector = input_pfx + fld + ' ' + input;
+          targets.observe('added', selector, function( record ) {
+            $(this).addClass('autocompluseraccount-multi');
+            enable_autocomplete(source);
+          });
+        });
+      }
+
+    }
+
+
+    $.getJSON(get_url('accounts_completion'), function(json) {
+      var source = json.users;
+      var sflds = json.single;
+      var mflds = json.multi;
+
+      enable_observe(source, sflds, mflds,
+        '#query #filters table.trac-clause',
+        'tbody tr.', 'td.filter input');
+
+      enable_observe(source, sflds, mflds,
+        '#batchmod_fieldset table tbody',
+        'tr#batchmod_', 'input');
+
+      enable_autocomplete(source);
     });
 
   });
