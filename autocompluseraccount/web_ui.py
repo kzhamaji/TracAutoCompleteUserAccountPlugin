@@ -21,7 +21,7 @@ except ImportError:
     has_UserPictureModule = False
 
 
-class TicketAutoCompleteUserPlugin (Component):
+class TicketAutoCompleteUserAccountPlugin (Component):
 
     ID = 'autocompluseraccount'
     SECTION = ID
