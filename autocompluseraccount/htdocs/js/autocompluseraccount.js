@@ -103,7 +103,7 @@
       var sflds = json.single;
       var mflds = json.multi;
 
-      enable_observe(source, sflds, mflds,
+      enable_observe(source, sflds.concat(mflds), [],
         '#query #filters table.trac-clause',
         'tbody tr.', 'td.filter input');
 
