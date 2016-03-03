@@ -11,7 +11,7 @@
     }
 
     function split (val) {
-      return val.split(/,\s*/);
+      return val.split(/[,\s]\s*/);
     }
     function extractLast (term) {
       return split(term).pop();
@@ -63,15 +63,15 @@
           },
           select: function( event, ui ) {
             var terms = split(this.value);
+            var sep = this.value.indexOf(',') < 0 ? ' ' : ', ';
             terms.pop();
             terms.push(ui.item.value);
-            terms.push("");
-            this.value = terms.join(", ");
+            this.value = terms.join(sep);
             return false;
           },
         })
         .blur(function(){
-          this.value = this.value.replace(/,\s*$/, '');
+          this.value = this.value.replace(/,?\s*$/, '');
         })
     }
 
